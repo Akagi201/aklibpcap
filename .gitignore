@@ -45,3 +45,5 @@ selpolltest
 tokdefs.h
 version.c
 version.h
+.cproject
+.project
