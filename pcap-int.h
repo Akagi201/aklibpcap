@@ -131,19 +131,20 @@ struct pcap {
 	LPPACKET Packet;
 	int nonblock;
 #else
-	int fd;
+	int fd; // 文件描述字, 实际就是 socket, 在 socket上, 可以使用 select()和 poll()等 I/O复用类型函数
+
 	int selectable_fd;
 #endif /* WIN32 */
 
 	/*
 	 * Read buffer.
 	 */
-	int bufsize;
-	u_char *buffer;
+	int bufsize; // 读缓冲区的长度
+	u_char *buffer; // 读缓冲区指针
 	u_char *bp;
 	int cc;
 
-	int break_loop;		/* flag set to force break from packet-reading loop */
+	int break_loop;		/* flag set to force break from packet-reading loop */ // 强制从读数据包循环中跳出的标志
 
 	void *priv;		/* private data for methods */
 
@@ -161,11 +162,11 @@ struct pcap {
 	int version_major;
 	int version_minor;
 
-	int snapshot;
-	int linktype;		/* Network linktype */
+	int snapshot;       // 用户期望的捕获数据包最大长度
+	int linktype;		/* Network linktype */ // 设备类型
 	int linktype_ext;       /* Extended information stored in the linktype field of a file */
-	int tzoff;		/* timezone offset */
-	int offset;		/* offset for proper alignment */
+	int tzoff;		/* timezone offset */ //时区位置, 实际上没有被使用
+	int offset;		/* offset for proper alignment */ // 边界对齐偏移量
 	int activated;		/* true if the capture is really started */
 	int oldstyle;		/* if we're opening with pcap_open_live() */
 
@@ -182,21 +183,23 @@ struct pcap {
 	/*
 	 * Placeholder for filter code if bpf not in kernel.
 	 */
-	struct bpf_program fcode;
+	struct bpf_program fcode; // 如果 BPF过滤代码不能在内核中执行, 则将其保存并在用户空间执行
 
-	char errbuf[PCAP_ERRBUF_SIZE + 1];
-	int dlt_count;
-	u_int *dlt_list;
+	char errbuf[PCAP_ERRBUF_SIZE + 1]; // 函数调用出错信息缓冲区
+	int dlt_count; // 当前设备支持的, 可更改的数据链路类型的个数
+	u_int *dlt_list; // 可更改的数据链路类型号链表, 在linux下没有使用
 	int tstamp_type_count;
 	u_int *tstamp_type_list;
 	int tstamp_precision_count;
 	u_int *tstamp_precision_list;
 
+	// 数据包自定义头部, 对数据包捕获时间, 捕获长度, 真实长度进行描述 [pcap.h]
 	struct pcap_pkthdr pcap_header;	/* This is needed for the pcap_next_ex() to work */
 
 	/*
 	 * More methods.
 	 */
+	// 相关抽象操作的函数指针, 最终指向特定操作系统的处理函数
 	activate_op_t activate_op;
 	can_set_rfmon_op_t can_set_rfmon_op;
 	inject_op_t inject_op;
@@ -299,9 +302,12 @@ struct pcap_sf_patched_pkthdr {
  * User data structure for the one-shot callback used for pcap_next()
  * and pcap_next_ex().
  */
+/*
+ * @brief 原来的singleton结构体, 单个数据包结构, 包含数据包元信息和数据信息
+ */
 struct oneshot_userdata {
-	struct pcap_pkthdr *hdr;
-	const u_char **pkt;
+	struct pcap_pkthdr *hdr; // libpcap自定义数据包头部
+	const u_char **pkt; // 指向捕获到的网络数据
 	pcap_t *pd;
 };
 

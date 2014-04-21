@@ -206,6 +206,14 @@ pcap_oneshot(u_char *user, const struct pcap_pkthdr *h, const u_char *pkt)
 	*sp->pkt = pkt;
 }
 
+/*
+ * @brief 获取下一个数据包, 实际上是对函数 pcap_dispatch()[pcap.c]的一个包装
+ *
+ *
+ * @param[in] p: 句柄
+ * @param[in] h: libpcap自定义的头部
+ * @return null
+ */
 const u_char *
 pcap_next(pcap_t *p, struct pcap_pkthdr *h)
 {
@@ -215,9 +223,10 @@ pcap_next(pcap_t *p, struct pcap_pkthdr *h)
 	s.hdr = h;
 	s.pkt = &pkt;
 	s.pd = p;
+	// 入参"1"代表收到1个数据包就返回, 回调函数pcap_oneshot()是对结构 oneshot_userdata 的属性赋值
 	if (pcap_dispatch(p, 1, p->oneshot_callback, (u_char *)&s) <= 0)
 		return (0);
-	return (pkt);
+	return (pkt); // 返回数据包缓冲区的指针
 }
 
 int
@@ -444,6 +453,17 @@ pcap_create(const char *source, char *errbuf)
 }
 #endif
 
+/*
+ * @brief 为捕获句柄 pcap_t设置 linux系统下的特定函数
+ * 其中最重要的是读数据包函数和设置过滤器函数(注意到这种从抽象模式到具体模式的设计思想在 linux源代码中也多次出现, 如 VFS文件系统)
+ *
+ * @param[in] source: NULL,或者"any", 则对所有接口捕获
+ * @param[in] snaplen: 用户期望的捕获数据包最大长度
+ * @param[in] promisc: 设置接口为混杂模式(捕获所有到达接口的数据包, 但只有在设备给定的情况下有意义)
+ * @param[in] to_ms: 函数超时返回的时间(即timeout)
+ * @param[in] errbuf: 错误信息buffer
+ * @return 句柄结构体
+ */
 static void
 initialize_ops(pcap_t *p)
 {
@@ -753,12 +773,24 @@ pcap_activate(pcap_t *p)
 	return (status);
 }
 
+/*
+ * @brief 打开设备以准备捕获数据包, 通过给定的接口设备名, 获得一个捕获句柄
+ *
+ *
+ * @param[in] source: NULL,或者"any", 则对所有接口捕获
+ * @param[in] snaplen: 用户期望的捕获数据包最大长度
+ * @param[in] promisc: 设置接口为混杂模式(捕获所有到达接口的数据包, 但只有在设备给定的情况下有意义)
+ * @param[in] to_ms: 函数超时返回的时间(即timeout)
+ * @param[in] errbuf: 错误信息buffer
+ * @return 句柄结构体
+ */
 pcap_t *
 pcap_open_live(const char *source, int snaplen, int promisc, int to_ms, char *errbuf)
 {
 	pcap_t *p;
 	int status;
 
+	// 为结构 pcap_t分配空间并根据函数入参对其部分属性进行初试化
 	p = pcap_create(source, errbuf);
 	if (p == NULL)
 		return (NULL);
@@ -823,6 +855,14 @@ pcap_open_offline_common(char *ebuf, size_t size)
 	return (p);
 }
 
+/*
+ * @brief 简单的调用捕获句柄 pcap_t 中定义的特定操作系统的读数据函数, 在linux中对应pcap_read_linux()(在创建捕获句柄时已定义 [pcap-linux.c])
+ * 而pcap_read_linux()则是直接调用 pcap_read_packet()([pcap-linux.c]).
+ *
+ * @param[in] p: 句柄
+ * @param[in]
+ * @return
+ */
 int
 pcap_dispatch(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
 {
@@ -839,6 +879,15 @@ pcap_read(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
 	return (p->read_op(p, cnt, callback, user));
 }
 
+/*
+ * @brief 收集数据包并处理他们, 该函数直到cnt个数据包被捕获后才会返回, 如果cnt为负数这只有出错时才返回
+ *
+ * @param[in] p: 句柄
+ * @param[in] cnt: 最多读多少个数据包
+ * @param[in] callback: 用户实现的回调函数
+ * @param[in] user:传递给回调函数的参数
+ * @return
+ */
 int
 pcap_loop(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
 {

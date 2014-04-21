@@ -102,9 +102,12 @@ typedef	u_int bpf_u_int32;
 /*
  * Structure for "pcap_compile()", "pcap_setfilter()", etc..
  */
+/*
+ * @brief 编译后的 BPF代码
+ */
 struct bpf_program {
-	u_int bf_len;
-	struct bpf_insn *bf_insns;
+	u_int bf_len; // BPF代码中谓词判断指令的数目
+	struct bpf_insn *bf_insns; // 第一个谓词判断指令
 };
  
 /*
@@ -1379,11 +1382,15 @@ struct bpf_program {
 /*
  * The instruction data structure.
  */
+/*
+ * @brief 谓词判断指令结构: opcode jt jf k
+ * BPF过滤代码从逻辑上看很类似于汇编语言, 但它实际上是机器语言, 注意到上述 4个域的数据类型都是 int和char型.
+ */
 struct bpf_insn {
-	u_short	code;
-	u_char 	jt;
-	u_char 	jf;
-	bpf_u_int32 k;
+	u_short	code; // 操作码和寻址方式
+	u_char 	jt; // 判断正确的跳转
+	u_char 	jf; // 判断失败的跳转
+	bpf_u_int32 k; // 操作使用的通用数据域
 };
 
 /*

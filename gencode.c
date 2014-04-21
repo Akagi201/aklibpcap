@@ -398,7 +398,14 @@ int no_optimize;
 static int
 pcap_compile_unsafe(pcap_t *p, struct bpf_program *program,
 	     const char *buf, int optimize, bpf_u_int32 mask);
-
+/*
+ * @brief 编译过滤字符串
+ *
+ * @param[in] buf: 用户过滤字符串
+ * @param[in] optimize: 指示是否对 BPF代码进行优化
+ * @param[out] program: 编译后的 BPF代码
+ * @return
+ */
 int
 pcap_compile(pcap_t *p, struct bpf_program *program,
 	     const char *buf, int optimize, bpf_u_int32 mask)

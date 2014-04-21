@@ -1465,12 +1465,22 @@ linux_check_direction(const pcap_t *handle, const struct sockaddr_ll *sll)
  *  the user. Returns the number of packets received or -1 if an
  *  error occured.
  */
+/*
+ * @brief 中心任务是利用了 recvfrom()从已创建的 socket上读数据包数据, 但是考虑到 socket可能为前面讨论到的三种方式中的某一种,
+ * 因此对数据缓冲区的结构有相应的处理，主要表现在加工模式下对伪链路层头部的合成
+ *
+ * @param[in]
+ * @param[in]
+ * @return
+ */
+
 static int
 pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 {
 	struct pcap_linux	*handlep = handle->priv;
-	u_char			*bp;
-	int			offset;
+	u_char			*bp; // 数据包缓冲区指针
+	int			offset; // bp与捕获句柄 pcap_t 中 handle->buffer之间的偏移量, 其目的是为在加工模式捕获情况下, 为合成的伪数据链路层头部留出空间
+	/* PACKET_SOCKET方式下, recvfrom()返回 scokaddr_ll类型, 而在SOCK_PACKET方式下, 返回 sockaddr类型 */
 #ifdef HAVE_PF_PACKET_SOCKETS
 	struct sockaddr_ll	from;
 	struct sll_header	*hdrp;
@@ -1489,6 +1499,7 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 	socklen_t		fromlen;
 #endif /* defined(HAVE_PACKET_AUXDATA) && defined(HAVE_LINUX_TPACKET_AUXDATA_TP_VLAN_TCI) */
 	int			packet_len, caplen;
+	/* libpcap 自定义的头部 */
 	struct pcap_pkthdr	pcap_header;
 
 #ifdef HAVE_PF_PACKET_SOCKETS
@@ -1496,9 +1507,11 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 	 * If this is a cooked device, leave extra room for a
 	 * fake packet header.
 	 */
+	/* 如果是加工模式，则为合成的链路层头部留出空间 */
 	if (handlep->cooked)
 		offset = SLL_HDR_LEN;
 	else
+	/* 其它两种方式下, 链路层头部不做修改的被返回, 不需要留空间 */
 		offset = 0;
 #else
 	/*
@@ -1556,6 +1569,7 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 		packet_len = recvmsg(handle->fd, &msg, MSG_TRUNC);
 #else /* defined(HAVE_PACKET_AUXDATA) && defined(HAVE_LINUX_TPACKET_AUXDATA_TP_VLAN_TCI) */
 		fromlen = sizeof(from);
+		// 从内核中接收一个数据包, 注意函数入参中对 bp的位置进行修正
 		packet_len = recvfrom(
 			handle->fd, bp + offset,
 			handle->bufsize - offset, MSG_TRUNC,
@@ -1591,6 +1605,8 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 	}
 
 #ifdef HAVE_PF_PACKET_SOCKETS
+	/* 如果是回路设备, 则只捕获接收的数据包, 而拒绝发送的数据包. 显然, 我们只能在 PF_PACKET
+	方式下这样做, 因为 SOCK_PACKET方式下返回的链路层地址类型为sockaddr_pkt, 缺少了判断数据包类型的信息. */
 	if (!handlep->sock_packet) {
 		/*
 		 * Unfortunately, there is a window between socket() and
@@ -1623,14 +1639,17 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 	/*
 	 * If this is a cooked device, fill in the fake packet header.
 	 */
+	/* 如果是加工模式, 则合成伪链路层头部 */
 	if (handlep->cooked) {
 		/*
 		 * Add the length of the fake header to the length
 		 * of packet data we read.
 		 */
+		/* 首先修正捕包数据的长度, 加上链路层头部的长度 */
 		packet_len += SLL_HDR_LEN;
 
 		hdrp = (struct sll_header *)bp;
+		/* 以下的代码分别对伪链路层头部的数据赋值 */
 		hdrp->sll_pkttype = map_packet_type_to_sll_type(from.sll_pkttype);
 		hdrp->sll_hatype = htons(from.sll_hatype);
 		hdrp->sll_halen = htons(from.sll_halen);
@@ -1711,17 +1730,19 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 	 * doesn't truncate the packet, and supplying that modified
 	 * filter to the kernel.
 	 */
-
+	/* 修正捕获的数据包的长度, 根据前面的讨论, SOCK_PACKET方式下长度可能是不准确的 */
 	caplen = packet_len;
 	if (caplen > handle->snapshot)
 		caplen = handle->snapshot;
 
 	/* Run the packet filter if not using kernel filter */
+	/* 如果没有使用内核级的包过滤, 则在用户空间进行过滤*/
 	if (handlep->filter_in_userland && handle->fcode.bf_insns) {
 		if (bpf_filter(handle->fcode.bf_insns, bp,
 		                packet_len, caplen) == 0)
 		{
 			/* rejected by filter */
+			/* 没有通过过滤, 数据包被丢弃 */
 			return 0;
 		}
 	}
@@ -1731,6 +1752,7 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 	/* get timestamp for this packet */
 #if defined(SIOCGSTAMPNS) && defined(SO_TIMESTAMPNS)
 	if (handle->opt.tstamp_precision == PCAP_TSTAMP_PRECISION_NANO) {
+		/* 填充 libpcap 自定义数据包头部数据: 捕获时间, 捕获的长度, 真实的长度 */
 		if (ioctl(handle->fd, SIOCGSTAMPNS, &pcap_header.ts) == -1) {
 			snprintf(handle->errbuf, PCAP_ERRBUF_SIZE,
 					"SIOCGSTAMPNS: %s", pcap_strerror(errno));
@@ -1739,6 +1761,7 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
         } else
 #endif
 	{
+        /* 累加捕获数据包数目, 注意到在不同内核/捕获方式情况下数目可能不准确 */
 		if (ioctl(handle->fd, SIOCGSTAMP, &pcap_header.ts) == -1) {
 			snprintf(handle->errbuf, PCAP_ERRBUF_SIZE,
 					"SIOCGSTAMP: %s", pcap_strerror(errno));
@@ -1796,6 +1819,7 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 	handlep->packets_read++;
 
 	/* Call the user supplied callback function */
+	/* 调用用户定义的回调函数 */
 	callback(userdata, &pcap_header, bp);
 
 	return 1;
@@ -2325,6 +2349,13 @@ pcap_platform_finddevs(pcap_if_t **alldevsp, char *errbuf)
 /*
  *  Attach the given BPF code to the packet capture device.
  */
+/*
+ * @brief 过滤代码的安装, 在包捕获设备上附加 BPF代码 [pcap-linux.c]
+ *
+ * @param[in]
+ * @param[in]
+ * @return
+ */
 static int
 pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
     int is_mmapped)
@@ -2335,7 +2366,7 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 	int			can_filter_in_kernel;
 	int			err = 0;
 #endif
-
+	/* 检查句柄和过滤器结构的正确性 */
 	if (!handle)
 		return -1;
 	if (!filter) {
@@ -2347,7 +2378,7 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 	handlep = handle->priv;
 
 	/* Make our private copy of the filter */
-
+	/* 具体描述如下 */
 	if (install_bpf_program(handle, filter) < 0)
 		/* install_bpf_program() filled in errbuf */
 		return -1;
@@ -2356,10 +2387,11 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 	 * Run user level packet filter by default. Will be overriden if
 	 * installing a kernel filter succeeds.
 	 */
+	/* 缺省情况下在用户空间运行过滤器, 但如果在内核安装成功, 则值为 1 */
 	handlep->filter_in_userland = 1;
 
 	/* Install kernel level filter if possible */
-
+	/* 尝试在内核安装过滤器 */
 #ifdef SO_ATTACH_FILTER
 #ifdef USHRT_MAX
 	if (handle->fcode.bf_len > USHRT_MAX) {
@@ -2369,6 +2401,7 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 		 * instructions but still it is possible. So for the
 		 * sake of correctness I added this check.
 		 */
+		/*过滤器代码太长, 内核不支持 */
 		fprintf(stderr, "Warning: Filter too complex for kernel\n");
 		fcode.len = 0;
 		fcode.filter = NULL;
@@ -2389,8 +2422,11 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 		 * the link-layer header and assume that the link-layer
 		 * payload begins at 0; "fix_program()" will do that.
 		 */
+		// linux 内核设置过滤器时使用的数据结构是 sock_fprog
+		// 而不是 BPF的结构 bpf_program, 因此应做结构之间的转换
 		switch (fix_program(handle, &fcode, is_mmapped)) {
 
+		/* 严重错误, 直接退出 */
 		case -1:
 		default:
 			/*
@@ -2399,7 +2435,7 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 			 * return -1 for that reason.)
 			 */
 			return -1;
-
+		/* 通过检查, 但不能工作在内核中 */
 		case 0:
 			/*
 			 * The program performed checks that we can't make
@@ -2408,6 +2444,7 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 			can_filter_in_kernel = 0;
 			break;
 
+		/* BPF可以在内核中工作 */
 		case 1:
 			/*
 			 * We have a filter that'll work in the kernel.
@@ -2441,6 +2478,7 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 	 *	is buggy and needs to understand that it's just
 	 *	padding.
 	 */
+	/* 如果可以在内核中过滤, 则安装过滤器到内核中 */
 	if (can_filter_in_kernel) {
 		if ((err = set_kernel_filter(handle, &fcode)) == 0)
 		{
@@ -2448,9 +2486,10 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 			 * Installation succeded - using kernel filter,
 			 * so userland filtering not needed.
 			 */
+			/* 安装成功 !!! */
 			handlep->filter_in_userland = 0;
 		}
-		else if (err == -1)	/* Non-fatal error */
+		else if (err == -1)	/* Non-fatal error */ /* 出现非致命性错误 */
 		{
 			/*
 			 * Print a warning if we weren't able to install
@@ -2473,7 +2512,10 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 	 * calling "pcap_setfilter()".  Otherwise, the kernel filter may
 	 * filter out packets that would pass the new userland filter.
 	 */
+	/* 如果不能在内核中使用过滤器, 则去掉曾经可能在此 socket
+	上安装的内核过滤器. 主要目的是为了避免存在的过滤器对数据包过滤的干扰 */
 	if (handlep->filter_in_userland)
+		/* 释放 socket 上可能有的内核过滤器 */
 		reset_kernel_filter(handle);
 
 	/*
@@ -2490,6 +2532,13 @@ pcap_setfilter_linux_common(pcap_t *handle, struct bpf_program *filter,
 	return 0;
 }
 
+/*
+ * @brief 在包捕获设备上附加 BPF代码 [pcap-linux.c]
+ *
+ * @param[in]
+ * @param[in]
+ * @return
+ */
 static int
 pcap_setfilter_linux(pcap_t *handle, struct bpf_program *filter)
 {
