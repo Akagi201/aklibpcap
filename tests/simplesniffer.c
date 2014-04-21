@@ -58,6 +58,7 @@ int main(void) {
 	/* 死循环并在每一次接收到数据包时调用回调函数process_packet() */
 	pcap_loop(descr, -1, process_packet, (u_char *)&count);
 	
+	pcap_close(descr);
 	return 0;
 }
 

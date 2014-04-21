@@ -927,6 +927,12 @@ pcap_breakloop(pcap_t *p)
 	p->break_loop = 1;
 }
 
+/*
+ * @brief 获取数据链接类型(数据链路层)
+ *
+ * @param[in] p: 句柄
+ * @return 数据链接类型
+ */
 int
 pcap_datalink(pcap_t *p)
 {
