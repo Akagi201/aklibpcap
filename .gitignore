@@ -47,3 +47,4 @@ version.c
 version.h
 .cproject
 .project
+.settings/

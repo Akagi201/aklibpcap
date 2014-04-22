@@ -1036,6 +1036,9 @@ pcap_lookupdev(errbuf)
 	}
 }
 
+/*
+ * @brief 获取我们嗅探的网络的网络掩码
+ */
 
 int
 pcap_lookupnet(device, netp, maskp, errbuf)

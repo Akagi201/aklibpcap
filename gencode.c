@@ -403,6 +403,7 @@ pcap_compile_unsafe(pcap_t *p, struct bpf_program *program,
  *
  * @param[in] buf: 用户过滤字符串
  * @param[in] optimize: 指示是否对 BPF代码进行优化
+ * @param[in] mask: 我们嗅探的网络的网络掩码, 除非我们想要测试广播地址, 该值可被安全的置为0
  * @param[out] program: 编译后的 BPF代码
  * @return
  */

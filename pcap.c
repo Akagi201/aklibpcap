@@ -207,11 +207,11 @@ pcap_oneshot(u_char *user, const struct pcap_pkthdr *h, const u_char *pkt)
 }
 
 /*
- * @brief 获取下一个数据包, 实际上是对函数 pcap_dispatch()[pcap.c]的一个包装
+ * @brief 鑾峰彇涓嬩竴涓暟鎹寘, 瀹為檯涓婃槸瀵瑰嚱鏁� pcap_dispatch()[pcap.c]鐨勪竴涓寘瑁�
  *
  *
- * @param[in] p: 句柄
- * @param[in] h: libpcap自定义的头部
+ * @param[in] p: 鍙ユ焺
+ * @param[in] h: libpcap鑷畾涔夌殑澶撮儴
  * @return null
  */
 const u_char *
@@ -223,10 +223,10 @@ pcap_next(pcap_t *p, struct pcap_pkthdr *h)
 	s.hdr = h;
 	s.pkt = &pkt;
 	s.pd = p;
-	// 入参"1"代表收到1个数据包就返回, 回调函数pcap_oneshot()是对结构 oneshot_userdata 的属性赋值
+	// 鍏ュ弬"1"浠ｈ〃鏀跺埌1涓暟鎹寘灏辫繑鍥�, 鍥炶皟鍑芥暟pcap_oneshot()鏄缁撴瀯 oneshot_userdata 鐨勫睘鎬ц祴鍊�
 	if (pcap_dispatch(p, 1, p->oneshot_callback, (u_char *)&s) <= 0)
 		return (0);
-	return (pkt); // 返回数据包缓冲区的指针
+	return (pkt); // 杩斿洖鏁版嵁鍖呯紦鍐插尯鐨勬寚閽�
 }
 
 int
@@ -454,15 +454,15 @@ pcap_create(const char *source, char *errbuf)
 #endif
 
 /*
- * @brief 为捕获句柄 pcap_t设置 linux系统下的特定函数
- * 其中最重要的是读数据包函数和设置过滤器函数(注意到这种从抽象模式到具体模式的设计思想在 linux源代码中也多次出现, 如 VFS文件系统)
+ * @brief 涓烘崟鑾峰彞鏌� pcap_t璁剧疆 linux绯荤粺涓嬬殑鐗瑰畾鍑芥暟
+ * 鍏朵腑鏈�閲嶈鐨勬槸璇绘暟鎹寘鍑芥暟鍜岃缃繃婊ゅ櫒鍑芥暟(娉ㄦ剰鍒拌繖绉嶄粠鎶借薄妯″紡鍒板叿浣撴ā寮忕殑璁捐鎬濇兂鍦� linux婧愪唬鐮佷腑涔熷娆″嚭鐜�, 濡� VFS鏂囦欢绯荤粺)
  *
- * @param[in] source: NULL,或者"any", 则对所有接口捕获
- * @param[in] snaplen: 用户期望的捕获数据包最大长度
- * @param[in] promisc: 设置接口为混杂模式(捕获所有到达接口的数据包, 但只有在设备给定的情况下有意义)
- * @param[in] to_ms: 函数超时返回的时间(即timeout)
- * @param[in] errbuf: 错误信息buffer
- * @return 句柄结构体
+ * @param[in] source: NULL,鎴栬��"any", 鍒欏鎵�鏈夋帴鍙ｆ崟鑾�
+ * @param[in] snaplen: 鐢ㄦ埛鏈熸湜鐨勬崟鑾锋暟鎹寘鏈�澶ч暱搴�
+ * @param[in] promisc: 璁剧疆鎺ュ彛涓烘贩鏉傛ā寮�(鎹曡幏鎵�鏈夊埌杈炬帴鍙ｇ殑鏁版嵁鍖�, 浣嗗彧鏈夊湪璁惧缁欏畾鐨勬儏鍐典笅鏈夋剰涔�)
+ * @param[in] to_ms: 鍑芥暟瓒呮椂杩斿洖鐨勬椂闂�(鍗硉imeout)
+ * @param[in] errbuf: 閿欒淇℃伅buffer
+ * @return 鍙ユ焺缁撴瀯浣�
  */
 static void
 initialize_ops(pcap_t *p)
@@ -774,15 +774,15 @@ pcap_activate(pcap_t *p)
 }
 
 /*
- * @brief 打开设备以准备捕获数据包, 通过给定的接口设备名, 获得一个捕获句柄
+ * @brief 鎵撳紑璁惧浠ュ噯澶囨崟鑾锋暟鎹寘, 閫氳繃缁欏畾鐨勬帴鍙ｈ澶囧悕, 鑾峰緱涓�涓崟鑾峰彞鏌�
  *
  *
- * @param[in] source: NULL,或者"any", 则对所有接口捕获
- * @param[in] snaplen: 用户期望的捕获数据包最大长度
- * @param[in] promisc: 设置接口为混杂模式(捕获所有到达接口的数据包, 但只有在设备给定的情况下有意义)
- * @param[in] to_ms: 函数超时返回的时间(即timeout)
- * @param[in] errbuf: 错误信息buffer
- * @return 句柄结构体
+ * @param[in] source: NULL,鎴栬��"any", 鍒欏鎵�鏈夋帴鍙ｆ崟鑾�
+ * @param[in] snaplen: 鐢ㄦ埛鏈熸湜鐨勬崟鑾锋暟鎹寘鏈�澶ч暱搴�
+ * @param[in] promisc: 璁剧疆鎺ュ彛涓烘贩鏉傛ā寮�(鎹曡幏鎵�鏈夊埌杈炬帴鍙ｇ殑鏁版嵁鍖�, 浣嗗彧鏈夊湪璁惧缁欏畾鐨勬儏鍐典笅鏈夋剰涔�)
+ * @param[in] to_ms: 鍑芥暟瓒呮椂杩斿洖鐨勬椂闂�(鍗硉imeout)
+ * @param[in] errbuf: 閿欒淇℃伅buffer
+ * @return 鍙ユ焺缁撴瀯浣�
  */
 pcap_t *
 pcap_open_live(const char *source, int snaplen, int promisc, int to_ms, char *errbuf)
@@ -790,7 +790,7 @@ pcap_open_live(const char *source, int snaplen, int promisc, int to_ms, char *er
 	pcap_t *p;
 	int status;
 
-	// 为结构 pcap_t分配空间并根据函数入参对其部分属性进行初试化
+	// 涓虹粨鏋� pcap_t鍒嗛厤绌洪棿骞舵牴鎹嚱鏁板叆鍙傚鍏堕儴鍒嗗睘鎬ц繘琛屽垵璇曞寲
 	p = pcap_create(source, errbuf);
 	if (p == NULL)
 		return (NULL);
@@ -856,10 +856,10 @@ pcap_open_offline_common(char *ebuf, size_t size)
 }
 
 /*
- * @brief 简单的调用捕获句柄 pcap_t 中定义的特定操作系统的读数据函数, 在linux中对应pcap_read_linux()(在创建捕获句柄时已定义 [pcap-linux.c])
- * 而pcap_read_linux()则是直接调用 pcap_read_packet()([pcap-linux.c]).
+ * @brief 绠�鍗曠殑璋冪敤鎹曡幏鍙ユ焺 pcap_t 涓畾涔夌殑鐗瑰畾鎿嶄綔绯荤粺鐨勮鏁版嵁鍑芥暟, 鍦╨inux涓搴攑cap_read_linux()(鍦ㄥ垱寤烘崟鑾峰彞鏌勬椂宸插畾涔� [pcap-linux.c])
+ * 鑰宲cap_read_linux()鍒欐槸鐩存帴璋冪敤 pcap_read_packet()([pcap-linux.c]).
  *
- * @param[in] p: 句柄
+ * @param[in] p: 鍙ユ焺
  * @param[in]
  * @return
  */
@@ -880,12 +880,12 @@ pcap_read(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
 }
 
 /*
- * @brief 收集数据包并处理他们, 该函数直到cnt个数据包被捕获后才会返回, 如果cnt为负数这只有出错时才返回
+ * @brief 鏀堕泦鏁版嵁鍖呭苟澶勭悊浠栦滑, 璇ュ嚱鏁扮洿鍒癱nt涓暟鎹寘琚崟鑾峰悗鎵嶄細杩斿洖, 濡傛灉cnt涓鸿礋鏁拌繖鍙湁鍑洪敊鏃舵墠杩斿洖
  *
- * @param[in] p: 句柄
- * @param[in] cnt: 最多读多少个数据包
- * @param[in] callback: 用户实现的回调函数
- * @param[in] user:传递给回调函数的参数
+ * @param[in] p: 鍙ユ焺
+ * @param[in] cnt: 鏈�澶氳澶氬皯涓暟鎹寘
+ * @param[in] callback: 鐢ㄦ埛瀹炵幇鐨勫洖璋冨嚱鏁�
+ * @param[in] user:浼犻�掔粰鍥炶皟鍑芥暟鐨勫弬鏁�
  * @return
  */
 int
@@ -928,10 +928,10 @@ pcap_breakloop(pcap_t *p)
 }
 
 /*
- * @brief 获取数据链接类型(数据链路层)
+ * @brief 鑾峰彇鏁版嵁閾炬帴绫诲瀷(鏁版嵁閾捐矾灞�)
  *
- * @param[in] p: 句柄
- * @return 数据链接类型
+ * @param[in] p: 鍙ユ焺
+ * @return 鏁版嵁閾炬帴绫诲瀷
  */
 int
 pcap_datalink(pcap_t *p)
@@ -1628,6 +1628,9 @@ pcap_strerror(int errnum)
 #endif
 }
 
+/*
+ * @brief 将编译过的BPF程序嵌入到内核中.
+ */
 int
 pcap_setfilter(pcap_t *p, struct bpf_program *fp)
 {
