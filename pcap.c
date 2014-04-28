@@ -782,7 +782,7 @@ pcap_activate(pcap_t *p)
  * @param[in] promisc: 璁剧疆鎺ュ彛涓烘贩鏉傛ā寮�(鎹曡幏鎵�鏈夊埌杈炬帴鍙ｇ殑鏁版嵁鍖�, 浣嗗彧鏈夊湪璁惧缁欏畾鐨勬儏鍐典笅鏈夋剰涔�)
  * @param[in] to_ms: 鍑芥暟瓒呮椂杩斿洖鐨勬椂闂�(鍗硉imeout)
  * @param[in] errbuf: 閿欒淇℃伅buffer
- * @return 鍙ユ焺缁撴瀯浣�
+ * @return 句柄
  */
 pcap_t *
 pcap_open_live(const char *source, int snaplen, int promisc, int to_ms, char *errbuf)
@@ -928,10 +928,10 @@ pcap_breakloop(pcap_t *p)
 }
 
 /*
- * @brief 鑾峰彇鏁版嵁閾炬帴绫诲瀷(鏁版嵁閾捐矾灞�)
+ * @brief 返回链路层类型 (DLT_XXX)
  *
- * @param[in] p: 鍙ユ焺
- * @return 鏁版嵁閾炬帴绫诲瀷
+ * @param[in] p: 句柄
+ * @return PCAP_ERROR_NOT_ACTIVATED / 链路层类型
  */
 int
 pcap_datalink(pcap_t *p)
